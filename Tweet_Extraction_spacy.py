@@ -32,13 +32,13 @@ emoji_pattern = re.compile("["
                             u"\U0001F1E0-\U0001F1FF"  # flags (iOS)
                                "]+", flags=re.UNICODE)
 # We use the file saved from last step as example
-new_path='/home/vivek/Four_Square_tweets/California/all_tweets/'
-csv_file=open(os.path.join(new_path,"cali_all_tweets_final_test"),"w")
-#CSV writer
-tweets_new_file=csv.writer(csv_file,delimiter=',',quotechar='"', quoting=csv.QUOTE_MINIMAL)
+new_path='/home/vivek/Four_Square_tweets/Cali_temp/all_tweets'
+csv_file=open(os.path.join(new_path,"cali_all_tweets_final_pronouns2.csv"),"w")
+#CSV writer which quotes only if necessary (Quote Mininmal)
+tweets_new_file=csv.writer(csv_file,delimiter=',',quotechar='"', quoting=csv.QUOTE_ALL)
 
 #tweets_new_file = open(os.path.join(new_path,"cali_all_tweets_final_test"), "w")
-for root, dirs, files in os.walk('/home/vivek/Four_Square_tweets/California'):
+for root, dirs, files in os.walk('/home/vivek/Four_Square_tweets/California2'):
     for file in files:
         with open(os.path.join(root,file),"r") as tweets_file:
             #tweets_filename = '/home/vivek/tweepy_dataset/trip.009.txt'
@@ -81,6 +81,12 @@ for root, dirs, files in os.walk('/home/vivek/Four_Square_tweets/California'):
                         ##Spacy NER
                         doc = nlp(clean_line2)
                         l = ""
+                        pronoun_flag=False
+                        for word in doc:
+                            if(word.pos_=='PRON'):
+                                pronoun_flag=True
+                        if(pronoun_flag==False):
+                            continue
                         gpe_loc_text=[]
                         l_index={}
                         # l_end = ""
@@ -173,4 +179,4 @@ for root, dirs, files in os.walk('/home/vivek/Four_Square_tweets/California'):
                     # read in a line is not in JSON format (sometimes error occured)
                     continue
                 prev_line=line
-tweets_new_file.close()
+# tweets_new_file.close()
