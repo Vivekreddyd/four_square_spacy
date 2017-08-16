@@ -1,6 +1,7 @@
 import scipy
 from scipy.stats.stats import pearsonr
 from sklearn.metrics import cohen_kappa_score
+# from sklearn.metrics import
 from nltk import agreement
 import csv
 # from itertools import zip
@@ -71,11 +72,13 @@ for j in range(3,8):
     print(len(dict_y[j]))
     # print
     print("Pearson:"+str(scipy.stats.pearsonr(dict_x[j],dict_y[j])))
+    cohen_kappa_score()
     # print(cohen_kappa_score(dict_x[j],dict_y[j]))
 
     taskdata=[[0,str(i),str(dict_x[j][i])] for i in range(0,len(dict_x[j]))]+[[1,str(i),str(dict_y[j][i])] for i in range(0,len(dict_y[j]))]
     ratingtask = agreement.AnnotationTask(data=taskdata)
-    print("kappa " +str(ratingtask.kappa()))
+    print("kappa " +str(ratingtask.weighted_kappa(max_distance=1.0)))
     # print("fleiss " + str(ratingtask.multi_kappa()))
     print("alpha " +str(ratingtask.alpha()))
+    # ratingtask.a
     # print("scotts " + str(ratingtask.pi()))
