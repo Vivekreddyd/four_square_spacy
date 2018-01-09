@@ -2,8 +2,9 @@ import spacy
 import csv
 from spacy.symbols import acomp,advcl,advmod,agent,amod,appos,attr,aux,auxpass,cc,ccomp,complm,conj,csubj,csubjpass,dep,det,dobj,expl,infmod,intj,iobj,mark,meta,neg,nmod,nn,npadvmod,nsubj,nsubjpass,num,number,oprd,parataxis,partmod,pcomp,pobj,poss,possessive,preconj,prep,prt,punct,quantmod,rcmod,root,xcomp,hmod
 import pickle
-nlp = spacy.load('en')
-
+# import en_core_web_sm
+nlp = spacy.load('en_core_web_sm')
+# nlp=en_core_web_sm.load()
 deps_vc_list =[aux,auxpass,prt]
 deps_list = [pobj,advmod,dobj,iobj]
 verb_tags = ["MD","VB","VBD","VBG","VBN","VBP","VBZ","RP","TO"]
@@ -14,7 +15,8 @@ perf_tenses=["past_perfect","past_perfect_cont","pres_perfect","pres_perfect_con
 def get_eve_tense_voice(ev_node): # pass as argument the verb node from spacy sentence
     v_cha ={}
     v_list=[]
-    pickle_src = pickle.load(open('tense.p','r')) # loads the  rules to be followed to extract tense
+    temp_pic=open('tense.p','rb')
+    pickle_src = pickle.load(temp_pic) # loads the  rules to be followed to extract tense
     v_cha[ev_node.i]=ev_node.tag_
     v_list.append(ev_node.lemma_)
     for w in ev_node.children:
@@ -24,18 +26,18 @@ def get_eve_tense_voice(ev_node): # pass as argument the verb node from spacy se
     v_ch = ""
     for k in sorted(v_cha.keys()):
         v_ch = v_ch+ str(v_cha[k])+" "
-            v_ch=v_ch.strip()
+        v_ch=v_ch.strip()
     voice="None"
     ev_tense = "None"
     modals = []
     for v in v_list:
-        if pickle_src.has_key(v.lower()):
+        if v.lower() in pickle_src:
             modals.append(pickle_src[v.lower()])
     if len(modals) > 0:
         modal = modals[0]
     else:
         modal = "None"
-    if pickle_src.has_key(v_ch):
+    if v_ch in pickle_src:
         t = pickle_src[v_ch]
         if t == "PAinfinitives":
             voice = "passive"
@@ -137,26 +139,18 @@ def get_eve_tense_voice(ev_node): # pass as argument the verb node from spacy se
     if ev_tense in perf_tenses:
         is_perf = True
     return ev_tense,voice,is_perf,modal
-    
-    
-'''
-Test cases
-'''
-sent = nlp(u'John is playing.')
+# sent = nlp(u'John is playing.')
 
 # since playing is the verb for which we need tense we pass it to the function that extracts tense
 
-print get_eve_tense_voice(sent[2])
+# print (get_eve_tense_voice(sent[2]))
 # will print the fine tense, voice, True/False (if the tense is a perfect tense) and modal (if present)
 
 
-'''
-    Test cases
-    '''
-sent = nlp(u'John will play.')
+# sent = nlp(u'John will play.')
 
 # since playing is the verb for which we need tense we pass it to the function that extracts tense
 
-print get_eve_tense_voice(sent[2])
+# print (get_eve_tense_voice(sent[2]))
 # will print the fine tense, voice, True/False (if the tense is a perfect tense) and modal (if present)
 

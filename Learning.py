@@ -14,6 +14,7 @@ from sklearn.model_selection import GridSearchCV
 from sklearn.svm import SVC
 import os
 import Feature_Extraction
+from sklearn.feature_extraction import DictVectorizer
 
 # In[150]:
 
@@ -98,47 +99,129 @@ import Feature_Extraction
 # # print(df6.as_matrix())
 
 X,Y=Feature_Extraction.Extract_Features()
-print(X.shape,Y.shape)
-print("X Values")
-print(X.head())
+# print(X.shape,Y.shape)
+# print("X Values")
+# print(X.head())
 
-X['tweet_time'] = X['tweet_time'].cat.codes
-X['loc_spacy'] = X['loc_spacy'].cat.codes
-X['tweet_verb'] = X['tweet_verb'].cat.codes
-X['tweet_verb_tag']=X['tweet_verb_tag'].cat.codes
+# X['tweet_time'] = X['tweet_time'].cat.codes
+# X['loc_spacy'] = X['loc_spacy'].cat.codes
+# X['tweet_verb'] = X['tweet_verb'].cat.codes
+# X['tweet_verb_tag']=X['tweet_verb_tag'].cat.codes
 
-print(X.head())
+# print(X.head())
 
 X=X.fillna(0)
-print(X.dtypes)
-print(Y.dtypes)
-X_train, X_test, Y_train, Y_test = train_test_split(X, Y, test_size=0.2)
+# print(X.dtypes)
+# print(Y.dtypes)
+# #
+# print(X.iloc[:,4:6])
+# print ()
 
+vect=DictVectorizer()
+Y=Y.replace(to_replace='Invalid',value='Unknown')
+X_train, X_test, Y_train, Y_test = train_test_split(X, Y, test_size=0.2)
+# print (vect.fit_transform(X_test.iloc[:,4:6].to_dict('records')))
+# print(vect.fit_transform(X.iloc[:,4:6].to_dict('records')))
 # Y = Y.reshape(-1, 1)
 
-print(X_train.iloc[:,3:6])
-Y=Y.replace(to_replace='Invalid',value='Unknown')
-print(Y.head())
+# print(X_train.iloc[:,4:18])
+
+# print(Y)
+# print(Y['bgt_Ad'].astype(str).str.contains('Invalid'))
+majority_baseline_output=open('majority_baseline_output.txt','w')
+SVM_output=open('svm_output.txt','w')
+
 for tag in ['bgt_Ad','blt_Ad','dur_Ad','alt_Ad','agt_Ad']:
 #     feature_vector = DictVectorizer()
+#     print(any(Y[tag]== 'Invalid'))
     Baseline = DummyClassifier(strategy="most_frequent")
 #     Baseline.fit(df4.to_dict('records'), df4[tag])
-    Baseline.fit(X_train['Tweet_ID'].reshape(-1,1),Y_train[tag])
-    print ("Majority baseline for " + tag)
-    print (classification_report(Y_test[tag],Baseline.predict(X_test['Tweet_ID'].reshape(-1,1))))
+    Baseline.fit(vect.fit_transform(X_train.iloc[:,4:23].to_dict('records')),Y_train[tag])
+    majority_baseline_output.write("Majority baseline for " + tag+'\n')
+    majority_baseline_output.write (classification_report(Y_test[tag],Baseline.predict(vect.fit_transform(X_test.iloc[:,4:23].to_dict('records'))))+'\n')
+    majority_baseline_output.write('\n')
 
 tuned_parameters = [
         {'kernel': ['rbf'], 'gamma': [1e-1, 1e-2, 1e-3, 1e-4, 1e-5, 1e-6, 1e-7, 1e-8], 'C': [1, 10, 100, 1000]},
         {'kernel': ['linear'], 'C': [1, 10, 100, 1000]}]
+
+#Feature set
+
+for feature in range(0,3):
+    for tag in ['bgt_Ad','blt_Ad','dur_Ad','alt_Ad','agt_Ad']:
+    #     feature_vector = DictVectorizer()
+    #     Baseline = DummyClassifier(strategy="most_frequent")
+    #     Baseline.fit(df4.to_dict('records'), df4[tag])
+    #     Baseline.fit(df6.as_matrix(),df4[tag])
+    #     print ("Majority baseline for " + tag)
+    #     print (classification_report(df5[tag],Baseline.predict(df7.as_matrix())))
+        if(feature==0):
+            svm_classifier = GridSearchCV(SVC(), tuned_parameters, scoring='f1_weighted',cv=5,n_jobs=8)
+            svm_classifier.fit(vect.fit_transform(X_train.iloc[:,4:7].to_dict('records')),Y_train[tag])
+            SVM_output.write("SVM with Location features with fine grained labels" + tag+'\n')
+            SVM_output.write(classification_report(Y_train[tag], svm_classifier.predict(vect.transform(X_train.iloc[:, 4:7].to_dict('records')))) + '\n')
+            SVM_output.write(classification_report(Y_test[tag], svm_classifier.predict(vect.transform(X_test.iloc[:,4:7].to_dict('records'))))+'\n')
+        elif (feature == 1):
+            svm_classifier = GridSearchCV(SVC(), tuned_parameters, scoring='f1_weighted', cv=5, n_jobs=8)
+            svm_classifier.fit(vect.fit_transform(X_train.iloc[:, 4:13].to_dict('records')), Y_train[tag])
+            SVM_output.write("SVM with location and pronoun features with fine grained labels" + tag+'\n')
+            SVM_output.write(classification_report(Y_train[tag], svm_classifier.predict(vect.transform(X_train.iloc[:, 4:13].to_dict('records')))) + '\n')
+            SVM_output.write(classification_report(Y_test[tag], svm_classifier.predict(vect.transform(X_test.iloc[:, 4:13].to_dict('records'))))+'\n')
+        elif (feature == 2):
+            svm_classifier = GridSearchCV(SVC(), tuned_parameters, scoring='f1_weighted', cv=5, n_jobs=8)
+            svm_classifier.fit(vect.fit_transform(X_train.iloc[:, 4:23].to_dict('records')), Y_train[tag])
+            SVM_output.write("SVM with location, pronoun and other features with fine grained labels" + tag+'\n')
+            SVM_output.write(classification_report(Y_train[tag], svm_classifier.predict(vect.transform(X_train.iloc[:, 4:23].to_dict('records')))) + '\n')
+            SVM_output.write(classification_report(Y_test[tag], svm_classifier.predict(vect.transform(X_test.iloc[:, 4:23].to_dict('records'))))+'\n')
+
+Y_train = Y_train.replace(to_replace=['CY','PY'], value='Yes')
+Y_test = Y_test.replace(to_replace=['CY','PY'], value='Yes')
+Y_train = Y_train.replace(to_replace=['CN','PN'], value='No')
+Y_test = Y_test.replace(to_replace=['CN','PN'], value='No')
+# print(Y['dur_Ad'].astype(str).str.contains('CY'))
+# print(Y['dur_Ad'].astype(str).str.contains('PY'))
+# print(Y['dur_Ad'].astype(str).str.contains('CN'))
+# print(Y['dur_Ad'].astype(str).str.contains('PN'))
+# X_train, X_test, Y_train, Y_test = train_test_split(X, Y, test_size=0.2)
 for tag in ['bgt_Ad','blt_Ad','dur_Ad','alt_Ad','agt_Ad']:
 #     feature_vector = DictVectorizer()
-#     Baseline = DummyClassifier(strategy="most_frequent")
+#     print(any(Y[tag]== 'Invalid'))
+    Baseline = DummyClassifier(strategy="most_frequent")
 #     Baseline.fit(df4.to_dict('records'), df4[tag])
-#     Baseline.fit(df6.as_matrix(),df4[tag]) 
-#     print ("Majority baseline for " + tag)
-#     print (classification_report(df5[tag],Baseline.predict(df7.as_matrix())))
+    Baseline.fit(vect.fit_transform(X_train.iloc[:,4:23].to_dict('records')),Y_train[tag])
+    majority_baseline_output.write("Majority baseline for " + tag+'\n')
+    majority_baseline_output.write (classification_report(Y_test[tag],Baseline.predict(vect.fit_transform(X_test.iloc[:,4:23].to_dict('records'))))+'\n')
+    majority_baseline_output.write('\n')
 
-    svm_classifier = GridSearchCV(SVC(), tuned_parameters, scoring='f1_weighted',cv=5,n_jobs=3)
-    svm_classifier.fit(X_train.iloc[:,5:7],Y_train[tag])
-    print ("SVM with features for " + tag)
-    print (classification_report(Y_test[tag], svm_classifier.predict(X_test.iloc[:,5:7])))
+
+for feature in range(0,3):
+    for tag in ['bgt_Ad','blt_Ad','dur_Ad','alt_Ad','agt_Ad']:
+    #     feature_vector = DictVectorizer()
+    #     Baseline = DummyClassifier(strategy="most_frequent")
+    #     Baseline.fit(df4.to_dict('records'), df4[tag])
+    #     Baseline.fit(df6.as_matrix(),df4[tag])
+    #     print ("Majority baseline for " + tag)
+    #     print (classification_report(df5[tag],Baseline.predict(df7.as_matrix())))
+        if(feature==0):
+            svm_classifier = GridSearchCV(SVC(), tuned_parameters, scoring='f1_weighted',cv=5,n_jobs=8)
+            svm_classifier.fit(vect.fit_transform(X_train.iloc[:,4:7].to_dict('records')),Y_train[tag])
+            SVM_output.write("SVM with Location features with coarse grained labels" + tag+'\n')
+            SVM_output.write(classification_report(Y_test[tag], svm_classifier.predict(vect.transform(X_test.iloc[:,4:7].to_dict('records'))))+'\n')
+        elif (feature == 1):
+            svm_classifier = GridSearchCV(SVC(), tuned_parameters, scoring='f1_weighted', cv=5, n_jobs=8)
+            svm_classifier.fit(vect.fit_transform(X_train.iloc[:, 4:13].to_dict('records')), Y_train[tag])
+            SVM_output.write("SVM with location and pronoun features with coarse grained labels" + tag+'\n')
+            SVM_output.write(classification_report(Y_test[tag], svm_classifier.predict(vect.transform(X_test.iloc[:, 4:13].to_dict('records'))))+'\n')
+        elif (feature == 2):
+            svm_classifier = GridSearchCV(SVC(), tuned_parameters, scoring='f1_weighted', cv=5, n_jobs=8)
+            svm_classifier.fit(vect.fit_transform(X_train.iloc[:, 4:23].to_dict('records')), Y_train[tag])
+            SVM_output.write("SVM with location, pronoun and other features with coarse grained labels" + tag+'\n')
+            SVM_output.write(classification_report(Y_test[tag], svm_classifier.predict(vect.transform(X_test.iloc[:, 4:23].to_dict('records'))))+'\n')
+            # elif (feature == 3):
+        #     svm_classifier = GridSearchCV(SVC(), tuned_parameters, scoring='f1_weighted', cv=5, n_jobs=8)
+        #     svm_classifier.fit(vect.fit_transform(X_train.iloc[:, 4:19].to_dict('records')), Y_train[tag])
+        #     print("SVM with features for " + tag)
+        #     print(classification_report(Y_test[tag], svm_classifier.predict(vect.transform(X_test.iloc[:, 4:19].to_dict('records')))))
+
+
+
